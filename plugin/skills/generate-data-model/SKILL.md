@@ -5,15 +5,17 @@ effort: medium
 agents: [explorer]
 description: >-
   Use to design the data model AND generate the actual forward + rollback
-  migrations in one pass — shippable SQL, not a plan. Greenfield-first: reads
+  migrations in one pass — shippable migrations, not a plan. Greenfield-first: reads
   PRD §4 (entity acceptance criteria) + sad.md §6.4 ER + the sequence diagrams,
-  then writes docs/features/{slug}/data-model.md plus paired *.up.sql / *.down.sql
-  migrations STAGED under docs/features/{slug}/migrations/ (NOT the live migrations/
+  then writes docs/features/{slug}/data-model.md plus forward + rollback migrations
+  (paired *.up.sql / *.down.sql by default, or the format .claude/rules/migrations.md
+  sets) STAGED under docs/features/{slug}/migrations/ (NOT the live migrations/
   tree — implement-tasks promotes them when the feature is actually built) and an
   audit report. Brownfield delta via --mode brownfield; drift-only via --drift-only.
   Keeps the course's opinionated DB conventions (created_at-only audit, hard delete,
   no CHECK/TRIGGER/business-default, SQL-first, timestamp-named idempotent migrations,
-  "DB as dumb storage"). Hard-refuse if PRD.md or sad.md is missing. Triggers on
+  "DB as dumb storage") unless the project's .claude/rules/migrations.md overrides them
+  (read on every run). Hard-refuse if PRD.md or sad.md is missing. Triggers on
   "data model for {slug}", "schema for {slug}", "generate migrations for {slug}",
   "DB design + migration", "/sdlc:generate-data-model {slug}", "модель даних для {slug}",
   "схема для {slug}", "згенеруй міграції".
@@ -33,11 +35,11 @@ stage: "07"
 
 # Skill: generate-data-model
 
-End-to-end runner for the persistence cut: data model + migrations + drift check in one pass. Greenfield-first by default; brownfield delta as `--mode brownfield`. Output is **shippable** — full `.up.sql` + `.down.sql`, not a plan — but **staged under `docs/features/<slug>/migrations/`, never written into the live `migrations/` tree.** `implement-tasks` **promotes** the staged pair into the repo's live `migrations/` (with the real timestamp / sequence value the convention assigns at promote-time) only when the feature is actually being built. This is deliberate: `generate-data-model` is a design stage several steps before `implement-tasks`, so a stray `migrate up` (a teammate's loop, CI, a deploy) must not be able to apply a half-designed schema to a real database.
+End-to-end runner for the persistence cut: data model + migrations + drift check in one pass. Greenfield-first by default; brownfield delta as `--mode brownfield`. Output is **shippable** — full forward + rollback migrations (`.up.sql` + `.down.sql` by default, or the project's format per `.claude/rules/migrations.md`), not a plan — but **staged under `docs/features/<slug>/migrations/`, never written into the live `migrations/` tree.** `implement-tasks` **promotes** the staged migrations into the repo's live `migrations/` (with the real timestamp / sequence value the convention assigns at promote-time) only when the feature is actually being built. This is deliberate: `generate-data-model` is a design stage several steps before `implement-tasks`, so a stray `migrate up` (a teammate's loop, CI, a deploy) must not be able to apply a half-designed schema to a real database.
 
 ## Why this differs from a pure mirror
 
-Unlike the rest of the SDLC toolkit (which mirrors the upstream pipeline's content under course names), `generate-data-model` is a **deliberate partial mirror**. It **keeps the course's opinionated DB defaults** — `created_at`-only audit columns, hard delete, no `CHECK` / `TRIGGER` / business `DEFAULT`, SQL-first migrations, timestamp-prefixed idempotent filenames, "DB as dumb storage" — and does **not** adopt the upstream stack-agnostic "detect-and-follow the repo's DB philosophy" stance. From the upstream pipeline it borrows only **three** mechanisms: (1) **staged migrations** written to the feature folder and promoted later by `implement-tasks`; (2) a **drift-check** that keeps the data model in sync with PRD + SAD; (3) **reading `docs/architecture-map.md`** as the convention source for where persistence + migrations live. (This divergence is also recorded in the toolkit README / CHANGELOG.)
+Unlike the rest of the SDLC toolkit (which mirrors the upstream pipeline's content under course names), `generate-data-model` is a **deliberate partial mirror**. It **keeps the course's opinionated DB defaults** — `created_at`-only audit columns, hard delete, no `CHECK` / `TRIGGER` / business `DEFAULT`, SQL-first migrations, timestamp-prefixed idempotent filenames, "DB as dumb storage" — and does **not** adopt the upstream stack-agnostic "detect-and-follow the repo's DB philosophy" stance: it never *infers* an override from the existing code. A project states its own conventions explicitly in `.claude/rules/migrations.md`, which the skill reads on every run and which overrides any default it covers (the same mechanism `api-forge` uses for `.claude/rules/openapi.md`). From the upstream pipeline it borrows only **three** mechanisms: (1) **staged migrations** written to the feature folder and promoted later by `implement-tasks`; (2) a **drift-check** that keeps the data model in sync with PRD + SAD; (3) **reading `docs/architecture-map.md`** as the convention source for where persistence + migrations live. (This divergence is also recorded in the toolkit README / CHANGELOG.)
 
 ## Owner
 
@@ -50,7 +52,7 @@ Backend Lead.
 - `/sdlc:generate-data-model <slug>` — explicit invocation.
 - `/sdlc:generate-data-model <slug> --mode brownfield` — analyze existing `migrations/` and propose a delta.
 - `/sdlc:generate-data-model <slug> --drift-only` — just compare the domain layer against the current schema; no generation.
-- Skip if `data-model.md` exists AND every entity in it has a corresponding pair of staged migration files.
+- Skip if `data-model.md` exists AND every entity in it has a corresponding staged migration (pair, or file in the project's format).
 
 ## Inputs
 
@@ -61,11 +63,11 @@ Backend Lead.
   - If either is missing: STOP, suggest `sdlc:write-prd <slug>` or `sdlc:architecture-design <slug>`.
 - Optional: the sequence diagrams in `sad.md §6` — each `writes/reads <entity>` note is an index candidate (one index per query, justified).
 - Optional: the domain layer (`internal/modules/<...>/domain/*` or stack-equivalent) — drift detection only.
-- **Convention source (borrowed mechanism):** `docs/architecture-map.md` (from `sdlc:map-architecture`) — read its §Migrations / persistence section to learn **where** the live `migrations/` tree lives and **which migration tool** the repo uses, instead of re-scanning from scratch. The map gives module layout + migration location; the course's DB defaults below are NOT overridden by it. For **drift detection** specifically, `explorer` still reads the **actual domain layer** (the map gives layout; drift needs the real struct/field source). Re-scan only if the map is absent or stale.
+- **Convention source (borrowed mechanism):** `docs/architecture-map.md` (from `sdlc:map-architecture`) — read its §Migrations / persistence section to learn **where** the live `migrations/` tree lives and **which migration tool** the repo uses, instead of re-scanning from scratch. The map gives module layout + migration location; it does not override the DB defaults below — only `.claude/rules/migrations.md` does (protocol step 2). For **drift detection** specifically, `explorer` still reads the **actual domain layer** (the map gives layout; drift needs the real struct/field source). Re-scan only if the map is absent or stale.
 
-## Defaults (the opinionated, course-owned set — preserved, NOT detected)
+## Defaults (the opinionated course set — NOT auto-detected; `.claude/rules/migrations.md` overrides)
 
-These defaults are baked into the skill and into the baseline `.claude/rules/migrations.md` the skill writes on first run. They are **course-opinionated and intentional** — the skill does NOT defer to a repo's differing DB philosophy. It flags any divergence from the repo's existing convention in the report so the team can decide, but the defaults below are the house style this skill applies.
+These defaults are baked into the skill and into the baseline `.claude/rules/migrations.md` the skill writes on first run. They are **course-opinionated and intentional** — the skill does not infer a different DB philosophy from the existing code. **If `.claude/rules/migrations.md` exists, it is read on every run and any rule it states overrides the matching row below** — including the migration tool / file format (e.g. framework migration classes instead of raw `.up.sql` / `.down.sql`), filenames, PK strategy, audit columns, the `CHECK` / `TRIGGER` policy, delete strategy, and the form of seeds / fixtures; rows the file doesn't cover keep the default. The audit report records every override. The **effective rules** used by every step below = these defaults, overridden row by row by the rules file. A divergence between the effective rules and the repo's existing code is flagged in the report so the team can decide (and, if the code is right, write it into the rules file).
 
 | Topic | Default | Why |
 |---|---|---|
@@ -89,22 +91,22 @@ These defaults are baked into the skill and into the baseline `.claude/rules/mig
 
 1. **Prereq check (hard).** `test -f docs/features/<slug>/PRD.md && test -f docs/features/<slug>/sad.md` → exit ≠ 0 = refuse with a pointer to which prereq is missing.
 
-2. **Rules bootstrap.** If `.claude/rules/migrations.md` is absent in the repo root, copy [`./templates/rules-migrations-baseline.md`](./templates/rules-migrations-baseline.md) → `.claude/rules/migrations.md` and tell the user «I wrote a baseline rules file; edit it if your team disagrees with any default.» Reporting this bootstrap is mandatory.
+2. **Rules: read or bootstrap.** Look for `.claude/rules/migrations.md` in the repo root — and, when the live migrations tree sits in a nested code repo with its own `.git` (location per `docs/architecture-map.md`, step 3), in that repo too. If none exists, copy [`./templates/rules-migrations-baseline.md`](./templates/rules-migrations-baseline.md) → `.claude/rules/migrations.md` (repo root) and tell the user «I wrote a baseline rules file; edit it if your team disagrees with any default.» Reporting this bootstrap is mandatory. If a file exists, read it — a team edit there overrides the Defaults table above (migration tool / file format, filenames, PK, audit columns, `CHECK` / `TRIGGER` policy, delete strategy, seeds / fixtures form, …), and the audit report records each deviation; when both exist, the code repo's file wins on any row both cover. Steps 6–14 apply the resulting **effective rules**.
 
-3. **Read the architecture map for migration location (borrowed mechanism — read-only).** Read `docs/architecture-map.md` (from `sdlc:map-architecture`) **first** — its §Migrations / persistence section tells you **where the live `migrations/` tree lives** and **which migration tool** the repo uses (e.g. golang-migrate's transaction-per-file wrapper). This is a **promote-time hint** for `implement-tasks`, not a license to write into the live tree here. The map also gives module layout, saving a re-scan. **The course DB defaults above are NOT overridden by the map** — if the repo's existing convention differs (e.g. it uses sequential filenames or `updated_at`), apply the course defaults and **flag the divergence in the audit report** so the team can decide. Re-scan with `explorer` only if the map is absent or stale.
+3. **Read the architecture map for migration location (borrowed mechanism — read-only).** Read `docs/architecture-map.md` (from `sdlc:map-architecture`) **first** — its §Migrations / persistence section tells you **where the live `migrations/` tree lives** and **which migration tool** the repo uses (e.g. golang-migrate's transaction-per-file wrapper). This is a **promote-time hint** for `implement-tasks`, not a license to write into the live tree here. The map also gives module layout, saving a re-scan. **The map does not override the effective rules from step 2** — if the repo's existing convention differs from them (e.g. it uses sequential filenames or `updated_at` and the rules file doesn't say so), apply the effective rules and **flag the divergence in the audit report** so the team can decide. Re-scan with `explorer` only if the map is absent or stale.
 
 4. **Read prereqs in this order:**
    a. PRD §4 — extract entity candidates from acceptance criteria.
    b. sad.md §6.4 — the initial ER stub (often `<!-- TBD: relationships -->`).
    c. `sad.md §6` sequences — each `Note over API, DB: writes <table.column>` becomes a query requirement → an index candidate.
    d. (Optional) the domain layer (`internal/modules/<...>/domain/*` or stack-equivalent) — if present, build a struct-vs-DDL map for drift detection (the `explorer` agent reads the real source).
-   e. (Brownfield only) the live `migrations/*.up.sql` — parse the current schema **offline** (no live DB connection).
+   e. (Brownfield only) the live migrations (`migrations/*.up.sql`, or the project's migration files per the rules file) — parse the current schema **offline** (no live DB connection).
 
 5. **Aggregate roots.** Ask the user (or infer from PRD acceptance criteria): which aggregate roots own what? Lessons aggregate ContentBlocks; Tenant aggregates QuotaConfig. Without explicit aggregates the FK graph turns into a hairball.
 
-6. **PK strategy.** UUID v7 app-side by default (course default). Confirm with the user only if a PRD acceptance criterion demands a different PK (e.g. a lookup slug as PK).
+6. **PK strategy.** UUID v7 app-side by default (course default), or the PK strategy the rules file sets. Confirm with the user only if a PRD acceptance criterion demands a different PK (e.g. a lookup slug as PK).
 
-7. **Columns + constraints** per entity, applying the course defaults:
+7. **Columns + constraints** per entity, applying the effective rules (the course defaults below, unless the rules file says otherwise):
    - `VARCHAR(N)` for bounded strings (choose N from PRD validation, e.g. `title: maxLength: 200` → `VARCHAR(200)`); `TEXT` only for long descriptions / URLs.
    - `JSONB` only for opaque payloads (one-line justification in the `Notes` column).
    - `created_at TIMESTAMPTZ NOT NULL DEFAULT now()`. **No `updated_at`** unless the entity is genuinely mutable AND the PRD requires it (surface this explicitly — never add `updated_at` silently).
@@ -119,20 +121,20 @@ These defaults are baked into the skill and into the baseline `.claude/rules/mig
    - Indexes table with `Query it serves` filled.
    **Validate the `erDiagram` per [`../_shared/mermaid-check.md`](../_shared/mermaid-check.md)** (render-parse with `mmdc` if available, else the structural lint — valid cardinality glyphs + `type name` attribute lines; fix before continuing — never commit a broken diagram).
 
-10. **Generate migration files — STAGED in the feature folder, never the live tree (borrowed mechanism).** Write the pairs into **`docs/features/<slug>/migrations/`** with a **feature-local timestamp-prefixed** name (`<YYYYMMDDhhmmss>_create_<entity>.up.sql` + matching `.down.sql`) that preserves intra-feature order. The SQL is full and shippable and follows every course default (SQL-first, idempotent, `created_at`-only, hard delete, no `CHECK`/`TRIGGER`); only the **location** differs from a live migration. **Never write into the repo's live `migrations/` tree here.** `implement-tasks` **promotes** these staged pairs into the live `migrations/` (re-stamping the timestamp at promote-time so the live sequence stays correct, in feature-local order) when it runs the migration task. The SQL content rules are unchanged:
-    - **Greenfield (default):** one create-`<entity>` `.up.sql` + `.down.sql` per entity (or per small aggregate). `CREATE TABLE IF NOT EXISTS` / `CREATE INDEX IF NOT EXISTS` everywhere; `ON CONFLICT DO NOTHING` on seeds.
+10. **Generate migration files — STAGED in the feature folder, never the live tree (borrowed mechanism).** Write them into **`docs/features/<slug>/migrations/`** in the **project's migration format** — by default a `.up.sql` + `.down.sql` pair with a **feature-local timestamp-prefixed** name (`<YYYYMMDDhhmmss>_create_<entity>.up.sql` + matching `.down.sql`); if the rules file sets another tool / format (e.g. one framework migration class per change with both directions in it), use that format, its file extension and its naming, keeping a feature-local timestamp prefix (or the format's own ordering) that preserves intra-feature order. Each migration — a pair, or one file carrying both directions — is full and shippable and follows the effective rules; only the **location** differs from a live migration. **Never write into the repo's live `migrations/` tree here.** `implement-tasks` **promotes** these staged migrations into the live tree (re-stamping the timestamp at promote-time so the live sequence stays correct, in feature-local order) when it runs the migration task. The content rules (defaults shown; the rules file overrides):
+    - **Greenfield (default):** one create-`<entity>` migration (`.up.sql` + `.down.sql`, or the project format) per entity (or per small aggregate). `CREATE TABLE IF NOT EXISTS` / `CREATE INDEX IF NOT EXISTS` everywhere; `ON CONFLICT DO NOTHING` on seeds.
     - **Brownfield (`--mode brownfield`):** diff vs the parsed existing schema; produce ALTERs only.
     - **Existing-table `CREATE INDEX`:** use `CONCURRENTLY` AND warn that the file must contain only that one statement if your migration tool wraps each file in a transaction (e.g. golang-migrate).
     - **New NOT NULL on existing table / rename / drop:** emit the 3-step expand → backfill → contract sequence (separate timestamp-named files); the user reviews the backfill SQL.
 
-11. **Seeds (3 buckets).**
+11. **Seeds (3 buckets)** — defaults below; if the rules file sets another form for seeds / fixtures (e.g. seeder classes, factories in a given place), follow it.
     - **Bootstrap** (admin user, default org) → first migration `<timestamp>_bootstrap_<thing>.up.sql`, deterministic hardcoded UUID v7 (e.g. `00000000-0000-7000-8000-000000000001`).
     - **Lookup data** (statuses, currencies, rating scales) → separate migration `<timestamp>_seed_<table>.up.sql` with `INSERT ... ON CONFLICT DO NOTHING` (idempotent — re-runs are safe).
     - **Test fixtures** → **NOT** in `migrations/`. Generate them in the form the repo uses (factory functions in `internal/testfixtures/<entity>` or stack-equivalent), documented under "Test fixtures" in `data-model.md`.
     - **PII guard (hard):** no real-looking email / name / phone in any seed — use `admin@example.test`, `user-<uuid>@example.test`, `Test User`.
 
 12. **Drift detection (always; `--drift-only` short-circuits to here) — borrowed mechanism, keeping the model in sync with PRD + SAD.** Two checks:
-    - **Schema-vs-source drift:** if the domain layer exists, map each field to a column and report `field-without-column` / `column-without-field` / `type-mismatch` / `nullability-mismatch`; **auto-propose fix migrations** under `docs/features/<slug>/migrations/_drift/` (staged, for the user to review — same staging discipline as the main migrations).
+    - **Schema-vs-source drift:** if the domain layer exists, map each field to a column and report `field-without-column` / `column-without-field` / `type-mismatch` / `nullability-mismatch`; **auto-propose fix migrations** under `docs/features/<slug>/migrations/_drift/` (staged, in the same project format as step 10, for the user to review — same staging discipline as the main migrations).
     - **Model-vs-spec drift:** cross-check `data-model.md` against PRD §4 entity acceptance criteria + `sad.md` §6.4 ER — flag any entity/relationship in the PRD/SAD with no table, and any table with no PRD/SAD origin. Record both in the audit report.
 
 13. **Breaking changes — 3-step decomposition.** If a rename / drop / re-type is described:
@@ -140,21 +142,22 @@ These defaults are baked into the skill and into the baseline `.claude/rules/mig
     - Phase 2: batched backfill script (ETA + resumability — write a one-page `backfill-<column>.md` companion).
     - Phase 3: drop the old column. Each phase = separate staged migration file = separate PR = separate deploy.
 
-14. **Self-check (4 mandatory, course-owned).** For every staged file:
-    - **Naming.** `plural snake_case` tables, `<timestamp>_<verb>_<entity>` filenames.
-    - **down.sql reversibility.** Every CREATE has a matching DROP; every ADD COLUMN a DROP COLUMN; every CREATE INDEX a DROP INDEX.
-    - **FK indexes.** Every `REFERENCES other_table(id)` has a `CREATE INDEX` on the FK column.
-    - **Forbidden features.** Grep for `CHECK (`, `CREATE TRIGGER`, `DEFAULT '` followed by a non-`now()` business literal. Fail with line numbers.
+14. **Self-check (4 mandatory, against the effective rules).** For every staged file:
+    - **Naming.** `plural snake_case` tables, `<timestamp>_<verb>_<entity>` filenames (or the naming the rules file sets).
+    - **Rollback reversibility.** The down direction (`.down.sql`, or the format's down part) reverses the up: every CREATE has a matching DROP; every ADD COLUMN a DROP COLUMN; every CREATE INDEX a DROP INDEX.
+    - **FK indexes.** Every `REFERENCES other_table(id)` (or the format's FK declaration) has an index on the FK column — unless the rules file says the tool / DB creates it.
+    - **Forbidden features.** Grep for `CHECK (`, `CREATE TRIGGER`, `DEFAULT '` followed by a non-`now()` business literal (or their equivalents in the project format) — minus whatever the rules file explicitly allows. Fail with line numbers.
     Any failure → fix or surface to the user (no silent commit).
 
 15. **Audit report** `docs/features/<slug>/_audit/data-model-<date>.md`:
+    - **Rules file:** `.claude/rules/migrations.md` bootstrapped | already present — read, with the list of Defaults rows it overrides (or «no overrides»).
     - **Generated files:** the **staged** migration paths (their `docs/features/<slug>/migrations/<timestamp>_*` paths) + `data-model.md`. State plainly: «migrations are **staged** — not yet in the live `migrations/` tree; `implement-tasks` promotes them (re-stamping the timestamp at promote-time)».
-    - **Convention divergences:** where the course defaults differ from the repo's existing convention (e.g. «your repo uses sequential `000003_*` naming; I wrote timestamps per the course default — see the Defaults table» or «repo has `updated_at` elsewhere; this feature is immutable so I omitted it»).
-    - **Drift findings:** schema-vs-source (with `_drift/*.sql` proposals) + model-vs-spec.
+    - **Convention divergences:** where the effective rules differ from the repo's existing convention (e.g. «your repo uses sequential `000003_*` naming; I wrote timestamps per the course default — see the Defaults table; if sequential is intended, say so in `.claude/rules/migrations.md`» or «repo has `updated_at` elsewhere; this feature is immutable so I omitted it»).
+    - **Drift findings:** schema-vs-source (with `_drift/` proposals) + model-vs-spec.
     - **Breaking changes decomposed:** any 3-step sequence generated.
     - **TBDs:** every `<!-- TBD -->` in `data-model.md` with file:line.
 
-16. **Propose commit + handoff.** Commit `feat(<slug>): data-model.md + staged migrations`. Then **emit the stage-handoff block** per [`../_shared/handoff.md`](../_shared/handoff.md) — *What I did* (the design doc + the staged migration pairs, plus the staged-not-live note) + *Review* (`docs/features/<slug>/data-model.md`, staged `docs/features/<slug>/migrations/`) + *Run next* (`/clear`, then `/sdlc:api-forge <slug>`).
+16. **Propose commit + handoff.** Commit `feat(<slug>): data-model.md + staged migrations`. Then **emit the stage-handoff block** per [`../_shared/handoff.md`](../_shared/handoff.md) — *What I did* (the design doc + the staged migrations, plus the staged-not-live note) + *Review* (`docs/features/<slug>/data-model.md`, staged `docs/features/<slug>/migrations/`) + *Run next* (`/clear`, then `/sdlc:api-forge <slug>`).
 
 ## Questions for discussion
 
@@ -168,11 +171,14 @@ These defaults are baked into the skill and into the baseline `.claude/rules/mig
 ## Definition of Done
 
 - `data-model.md` exists with ER + every entity + every index carrying a query justification; the `erDiagram` parses.
-- For every entity/change, a matched `.up.sql` + `.down.sql` pair exists **under `docs/features/<slug>/migrations/`** (staged, timestamp-prefixed names) — **nothing was written into the live `migrations/` tree** (that's `implement-tasks`'s promotion step). The SQL follows the course defaults (SQL-first, idempotent, `created_at`-only, hard delete, no `CHECK`/`TRIGGER`/business-`DEFAULT`).
+- For every entity/change, a migration with both directions exists **under `docs/features/<slug>/migrations/`** (staged; a `.up.sql` + `.down.sql` pair with timestamp-prefixed names by default, or the project's format) — **nothing was written into the live `migrations/` tree** (that's `implement-tasks`'s promotion step). It follows the effective rules: the course defaults (SQL-first, idempotent, `created_at`-only, hard delete, no `CHECK`/`TRIGGER`/business-`DEFAULT`) as overridden by `.claude/rules/migrations.md`.
+- `.claude/rules/migrations.md` exists (bootstrapped and reported, or already there and read); the audit report lists the rows it overrides.
 - All 4 self-checks pass (naming, down reversibility, FK indexes, forbidden features).
-- Audit report written (with the staged paths + the promote-time note); drift report (schema-vs-source under `_drift/*.sql`, plus model-vs-spec) if drift was detected.
+- Audit report written (with the staged paths + the promote-time note); drift report (schema-vs-source under `_drift/`, plus model-vs-spec) if drift was detected.
 
 ## Anti-patterns
+
+The DB-convention items below restate the course defaults; a rule in `.claude/rules/migrations.md` that explicitly allows one of them takes precedence.
 
 - **Writing the migration into the live `migrations/` tree at design time.** That drops a half-designed, runnable schema where a stray `migrate up` (CI, a teammate's loop, a deploy) can apply it before the feature is built or reviewed — and grabs a sequence slot early. Stage under `docs/features/<slug>/migrations/`; `implement-tasks` promotes it (re-stamped) when the code that needs it is actually being written.
 - **Business defaults in DB** (`DEFAULT 'pending'`). Only `DEFAULT now()` for timestamps; the rest in app code.
@@ -184,15 +190,16 @@ These defaults are baked into the skill and into the baseline `.claude/rules/mig
 - **One mega-migration with 5 ALTERs.** Rollback becomes all-or-nothing. Split.
 - **DROP COLUMN before deploying new code.** Breaks running pods between phases. Always 3-step.
 - **Real-looking PII in seeds** (Gmail / .ua emails). Use `example.test`.
-- **Sequential migration filenames.** Two parallel feature branches collide on `000034_`. Use timestamps.
-- **Switching to an ORM / migration DSL.** SQL-first — the `.up.sql` / `.down.sql` is the contract.
-- **Live DB introspection without an offline parse fallback.** CI has no DB credentials; parse the SQL files.
+- **Sequential migration filenames** (unless the rules file sets them). Two parallel feature branches collide on `000034_`. Use timestamps.
+- **Switching to an ORM / migration DSL on your own.** SQL-first — the `.up.sql` / `.down.sql` is the contract, unless `.claude/rules/migrations.md` names another tool / format; then that format is the contract.
+- **Ignoring an existing `.claude/rules/migrations.md`.** It is the team's override of the Defaults table — read it on every run, apply it, and list the overrides in the audit report.
+- **Live DB introspection without an offline parse fallback.** CI has no DB credentials; parse the migration files.
 - **Bootstrapping `rules/migrations.md` and forgetting to tell the user.** Report it when it happens.
 
 ## Templates
 
 → [`./templates/data-model.md`](./templates/data-model.md) — output structure for the design doc.
-→ [`./templates/rules-migrations-baseline.md`](./templates/rules-migrations-baseline.md) — baseline `.claude/rules/migrations.md` copied at step 2 when missing.
+→ [`./templates/rules-migrations-baseline.md`](./templates/rules-migrations-baseline.md) — baseline `.claude/rules/migrations.md` copied at step 2 when missing (an existing file is read instead).
 → [`../_shared/mermaid-check.md`](../_shared/mermaid-check.md) — validate the `erDiagram` after writing it.
 → [`../_shared/handoff.md`](../_shared/handoff.md) — the stage-handoff block emitted at the end (step 16).
 
@@ -217,3 +224,5 @@ These defaults are baked into the skill and into the baseline `.claude/rules/mig
 > 14. Self-check: 4/4 pass — naming OK, every `.down` reverses its `.up`, FK indexes present (`idx_blocks_lesson_id`), no forbidden features.
 > 15. Audit report `_audit/data-model-2026-05-23.md`: lists the **staged** migration paths; notes «staged, not live — `implement-tasks` promotes»; flags «timestamp naming differs from the repo's existing sequential `000003_seed_admin.up.sql` — course default, see Defaults table»; no drift; 1 TBD (`block.payload` marked `<!-- TBD: lock with ADR-0001 -->`).
 > 16. Commit `feat(course-lesson-mvp): data-model.md + staged migrations`; emits the stage-handoff block → next `/sdlc:api-forge course-lesson-mvp`.
+>
+> **Variant — rules file present.** Had `.claude/rules/migrations.md` already said «framework migration classes, one file per change with `up()` / `down()`; `updated_at` on every table», step 2 reads it and reports both overrides; step 7 adds `updated_at`; step 10 stages `<timestamp>_create_lessons.<ext>` files in that format instead of `.up.sql` / `.down.sql` pairs; step 14 checks each `down()` against its `up()`; step 15 lists the two overrides under «Rules file».

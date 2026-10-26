@@ -1,10 +1,10 @@
 # Command detection (step 3)
 
-Resolve four commands — **unit test**, **integration test**, **lint**, **vet/typecheck** — without hard-coding any language. Run the cascade per command; the first hit wins. Print the resolved set so the user can see (and override via settings) what the engine will run.
+Resolve four commands — **unit test**, **integration test**, **lint**, **vet/typecheck** — without hard-coding any language. Run the cascade per command; the first hit wins. Print the resolved set so the user can see (and override via settings) what the engine will run. In a workspace with nested code repos ([`inputs.md`](./inputs.md) §Nested code repos) the cascade runs **once per owning repo**, inside that repo's root; a single-repo project runs it once, as before.
 
 ## Cascade (first match wins)
 
-1. **Settings override.** A non-empty `cmd_test_unit` / `cmd_test_integration` / `cmd_lint` / `cmd_vet` in `.claude/sdlc.local.md` short-circuits everything. This is the escape hatch for unusual repos.
+1. **Settings override.** A non-empty `cmd_test_unit` / `cmd_test_integration` / `cmd_lint` / `cmd_vet` in `.claude/sdlc.local.md` short-circuits everything. This is the escape hatch for unusual repos. For a nested code repo, a non-empty `repos.<path>.cmd_*` (see [`settings.md`](./settings.md)) is checked first and wins over the top-level key.
 2. **Makefile targets.** If a `Makefile` exists, grep its targets. Map by convention: `test` / `test-unit` → unit; `test-integration` / `integration` / `test-e2e` → integration; `lint` → lint; `vet` / `typecheck` / `check` → vet. A `Makefile` target wins over a raw tool because it encodes the repo's own wiring (flags, build tags, env).
 3. **`package.json` scripts.** If present, read `scripts`: `test` / `test:unit` → unit; `test:integration` / `test:e2e` → integration; `lint` → lint; `typecheck` / `tsc` → vet. Invoke via the repo's package manager (detect `pnpm-lock.yaml` / `yarn.lock` / `package-lock.json`).
 4. **Language manifests** (the broad fallback — pick the toolchain the manifest implies):
@@ -27,9 +27,11 @@ detected commands:
   vet          = make vet
 ```
 
+Nested code repos → one such block per owning repo, headed `repo <path>:`.
+
 If a command can't be resolved: lint/vet missing → skip that gate with a one-line warning (don't fail the run); unit missing → **stop** (TDD needs a unit runner); integration missing → governed by `require_integration`.
 
 ## Notes
 
 - Detection is read-only — never install tools. If `golangci-lint` (or any linter) isn't on PATH, note it and skip lint locally; CI can enforce it.
-- Cache the resolved set for the whole run; don't re-detect per task.
+- Cache the resolved set (per repo) for the whole run; don't re-detect per task.

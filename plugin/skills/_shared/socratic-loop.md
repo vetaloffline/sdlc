@@ -76,7 +76,7 @@ A section is done when every decision in it has exactly one resolution applied, 
 
 ## Per-skill delta (what each consuming skill defines locally)
 
-A consuming skill's `references/socratic.md` (or an inline ≤5-line block in `SKILL.md`) supplies only:
+A consuming skill's `references/socratic-loop.md` (or an inline ≤5-line block in `SKILL.md`) supplies only:
 
 - **Section/group list** walked in order (e.g. `write-prd`: the 5 AC coverage types; `architecture-design`: Arc42 §1–§12).
 - **Decision-types catalog** for this artifact (e.g. `architecture-design`: Strategic / Building-block / Crosscutting / Quality-scenario / Risk).

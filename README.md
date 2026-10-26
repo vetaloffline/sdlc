@@ -8,6 +8,25 @@ template with subtractive batteries, plus cross-cutting utilities: live-browser 
 verification (`verify-ui`), end-user documentation generation (`user-documentation`),
 design specs, ADRs, review checklists.
 
+## Fork notes
+
+This is a fork of [genkovich/sdlc](https://github.com/genkovich/sdlc) 4.6.2 (version
+`4.6.2-vet.1`). The plugin name (`sdlc`), agent names and every default are unchanged; what differs:
+
+- `generate-data-model` reads `.claude/rules/migrations.md` on every run and lets it override the
+  DB defaults (migration format, PK, audit columns, CHECK/TRIGGER policy, delete strategy, seeds).
+- `implement-tasks` supports nested code repos (docs in the root repo, code in sub-directories with
+  their own `.git`): per-task owning repo, one commit per repo, per-repo `repos:` command overrides.
+- Broken file references in `plugin/` fixed; the «Generated with Claude Code» line is dropped from
+  the `ship-feature` PR-body template.
+
+Details in [CHANGELOG.md](CHANGELOG.md). To pull upstream changes:
+
+```bash
+git remote add upstream https://github.com/genkovich/sdlc.git   # once
+git fetch upstream && git merge upstream/main
+```
+
 ## Install
 
 ```bash

@@ -43,7 +43,7 @@ The same lanes as the team apply: `layer: migration` tasks are forced into a sin
 
 ## Commit + integration
 
-- Commits are produced by the `commit` step of each pipeline (or batched by the engine after the workflow returns, if `auto_commit: per_phase`), with `SDLC-Task`/`SDLC-AC` trailers, serialized in dependency order.
+- Commits are produced by the `commit` step of each pipeline (or batched by the engine after the workflow returns, if `auto_commit: per_phase`), with `SDLC-Task`/`SDLC-AC` trailers, serialized in dependency order. In a nested-repo workspace each task's stages run in its owning repo (worktree there, that repo's commands) and the commit lands in that repo — one per repo for a task that spans two — while the tracker update stays in the docs repo; see [`./inputs.md`](./inputs.md) §Nested code repos.
 - Integration tier follows `require_integration`: in CI (Docker present) the integration RED→GREEN runs inside the verify stage; locally under `auto` with no Docker it's NON-red and the proving run relies on CI for the integration green.
 
 ## Graceful fallback

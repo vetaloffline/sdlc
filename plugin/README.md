@@ -117,16 +117,16 @@ Per-skill specifics (templates + key references):
 | `map-architecture` | no templates — writes `docs/architecture-map.md` directly from codebase scan |
 | `interview` | `templates/idea-brief.md` (15 sections); dispatches researcher/strategist/analyst/devils-advocate |
 | `write-prd` | `templates/PRD-template.md`; `references/{draft-generation,socratic-loop,critic-phase,critic-prompt,ask-examples,checklist}.md` |
-| `clarify-prd` | `references/ambiguity-sweep.md` (tightens PRD in place, no new file) |
+| `clarify-prd` | `references/ambiguity-checks.md` (tightens PRD in place, no new file) |
 | `architecture-design` | `templates/{sad-template,adr-template,c4-context,c4-container,deployment}.md`; `references/{draft-generation,socratic-loop,blast-radius-heuristic,socratic-cadence,c4-mermaid-syntax,…}.md` |
 | `complete-sequence-diagrams` | `templates/{seq-flow,seq-coverage}.md` (single-flow shape + the US/AC → flow coverage block, both embedded inline in SAD §6) |
 | `generate-data-model` | `templates/{data-model,rules-migrations-baseline}.md`; staged migrations to `docs/features/<slug>/migrations/`; reads `docs/architecture-map.md` for convention source |
 | `api-forge` | `templates/{openapi.yaml,events.md,cli.md,public-api.md,rules-openapi-baseline.md}`; `references/drift-check.md` (per-surface contracts, verdict rules + 5-point drift detection, baseline `.claude/rules/openapi.md`) |
 | `break-tasks` | `templates/{_epic,tracker,task}.md`; produces `tasks/tasks.json` machine DAG |
 | `plan-tests` | `templates/test-plan.md` |
-| `implement-tasks` | reads `tasks/tasks.json`; `references/{tdd-engine,commit-format,sdlc-local,…}.md` (×8); promotes staged migrations |
-| `review-feature` | `templates/review-template.md`; `references/review-dimensions.md` (AC trace + quality dimensions) |
-| `ship-feature` | `templates/{changelog-entry,pr-body}.md`; forge-detect (gh/glab); updates `docs/roadmap.md` |
+| `implement-tasks` | reads `tasks/tasks.json`; `references/{inputs,settings,command-detection,decision-tree,tdd-loop,team-exec,workflow-exec,escalation}.md`; promotes staged migrations; nested code repos (one commit per owning repo) |
+| `review-feature` | `references/review-dimensions.md` (AC trace + quality dimensions) |
+| `ship-feature` | `templates/{changelog,pr-body}.md`; forge-detect (gh/glab); updates `docs/roadmap.md` |
 | `decide-adr` | no own templates — pulls canonical `../architecture-design/templates/adr-template.md` cross-skill |
 | `fix-term` | `templates/CONTEXT.md` (lazy bootstrap for the per-feature glossary) |
 | `classify-size` | no template — writes a 1-line `.size` file |
@@ -136,11 +136,11 @@ Per-skill specifics (templates + key references):
 
 ## DB exception
 
-`generate-data-model` is a **deliberate partial mirror** of the upstream sdd pipeline. It keeps the course's opinionated DB defaults — audit = `created_at` only (immutable-first); hard delete; no CHECK / TRIGGER / business DEFAULT (DB as "dumb storage"); SQL-first migrations; timestamp-prefixed idempotent filenames. It does **not** adopt sdd's stack-agnostic "detect-the-repo's-DB-philosophy" stance. From the upstream pipeline it borrows only: staged migrations, drift-check, and reading `docs/architecture-map.md` as a convention source.
+`generate-data-model` is a **deliberate partial mirror** of the upstream sdd pipeline. It keeps the course's opinionated DB defaults — audit = `created_at` only (immutable-first); hard delete; no CHECK / TRIGGER / business DEFAULT (DB as "dumb storage"); SQL-first migrations; timestamp-prefixed idempotent filenames. It does **not** adopt sdd's stack-agnostic "detect-the-repo's-DB-philosophy" stance — it never infers an override from existing code. A project states its own conventions in `.claude/rules/migrations.md`: bootstrapped from the baseline when absent, read on every run when present, and overriding any default it covers (migration tool / file format, PK, audit columns, CHECK / TRIGGER policy, delete strategy, seeds / fixtures form); staged migrations, the drift check and `implement-tasks` promotion then use the project's format, and the audit report lists the overrides — the same mechanism `api-forge` uses for `.claude/rules/openapi.md`. From the upstream pipeline it borrows only: staged migrations, drift-check, and reading `docs/architecture-map.md` as a convention source.
 
 ## Shared templates
 
-`sdlc/document-templates/` keeps templates that don't belong to any single skill:
+`sdlc/document-templates/` (in the upstream course repo — not shipped in this plugin repo) keeps templates that don't belong to any single skill:
 
 - **Cross-feature / manual** — `CHANGELOG.md`, `CONTEXT-MAP.md` (multi-context glossary map), `claude-context.md` (coding-session bootstrap), `review-checklist.md`, `rollback-plan.md`, `migration-plan.md`, `task-breakdown.md` (legacy alias for `break-tasks` outputs), `diagrams/c4-component.md` (L3, out of scope for SAD).
 - **Legacy** — `SPEC.md`, `arc42.md`, `architecture-brief.md`, `adr/NNNN-title.md` — superseded artefacts kept for repos that haven't migrated.
@@ -158,7 +158,7 @@ Skills do **not** copy from this folder during their protocol. These are snippet
 
 ## Customizing
 
-See [CONTRIBUTING.md](../CONTRIBUTING.md) for how to add a new skill.
+`CONTRIBUTING.md` (how to add a new skill) lives in the upstream course repo and is not shipped here; a new skill follows the anatomy in «What's inside each skill» above.
 
 ## License
 

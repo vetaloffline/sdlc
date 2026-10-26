@@ -90,7 +90,7 @@ Whoever drives the conversation — anyone who spots ambiguity. Tech Lead approv
 - [`./templates/CONTEXT.md`](./templates/CONTEXT.md) — output scaffold; inline comments are the per-section contract (Glossary mandatory, Invariants/Out-of-scope pruned when empty).
 - [`../_shared/ask-style.md`](../_shared/ask-style.md) — phrasing for the definition / NOT-reference / conflict questions.
 - [`../_shared/handoff.md`](../_shared/handoff.md) — stage-handoff block format (utility variant).
-- [`../../../document-templates/CONTEXT-MAP.md`](../../../document-templates/CONTEXT-MAP.md) — CONTEXT-MAP.md scaffold for multi-context repos.
+- `CONTEXT-MAP.md` (repo root, multi-context repos) — no scaffold ships with the plugin: it is a `| Context | Path | Scope |` table, one row per bounded context (step 1 adds rows).
 
 ## Example invocation
 
