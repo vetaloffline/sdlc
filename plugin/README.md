@@ -138,15 +138,6 @@ Per-skill specifics (templates + key references):
 
 `generate-data-model` is a **deliberate partial mirror** of the upstream sdd pipeline. It keeps the course's opinionated DB defaults — audit = `created_at` only (immutable-first); hard delete; no CHECK / TRIGGER / business DEFAULT (DB as "dumb storage"); SQL-first migrations; timestamp-prefixed idempotent filenames. It does **not** adopt sdd's stack-agnostic "detect-the-repo's-DB-philosophy" stance — it never infers an override from existing code. A project states its own conventions in `.claude/rules/migrations.md`: bootstrapped from the baseline when absent, read on every run when present, and overriding any default it covers (migration tool / file format, PK, audit columns, CHECK / TRIGGER policy, delete strategy, seeds / fixtures form); staged migrations, the drift check and `implement-tasks` promotion then use the project's format, and the audit report lists the overrides — the same mechanism `api-forge` uses for `.claude/rules/openapi.md`. From the upstream pipeline it borrows only: staged migrations, drift-check, and reading `docs/architecture-map.md` as a convention source.
 
-## Shared templates
-
-`sdlc/document-templates/` (in the upstream course repo — not shipped in this plugin repo) keeps templates that don't belong to any single skill:
-
-- **Cross-feature / manual** — `CHANGELOG.md`, `CONTEXT-MAP.md` (multi-context glossary map), `claude-context.md` (coding-session bootstrap), `review-checklist.md`, `rollback-plan.md`, `migration-plan.md`, `task-breakdown.md` (legacy alias for `break-tasks` outputs), `diagrams/c4-component.md` (L3, out of scope for SAD).
-- **Legacy** — `SPEC.md`, `arc42.md`, `architecture-brief.md`, `adr/NNNN-title.md` — superseded artefacts kept for repos that haven't migrated.
-
-Skills do **not** copy from this folder during their protocol. These are snippets a human pulls in by hand when the feature needs them.
-
 ## Conventions
 
 - **Skill = source of truth.** Edit `skills/<name>/SKILL.md` to change skill behaviour; the protocol there is what gets executed.
@@ -155,10 +146,6 @@ Skills do **not** copy from this folder during their protocol. These are snippet
 - **One ADR = one decision.** Spawned inline through the blast-radius gate in `architecture-design`; standalone via `decide-adr` for post-hoc cases.
 - **Texts in repo, not Confluence.**
 - **Feature artifacts at `docs/features/<slug>/`** — repo-root artifacts at `docs/` (architecture-map.md, roadmap.md).
-
-## Customizing
-
-`CONTRIBUTING.md` (how to add a new skill) lives in the upstream course repo and is not shipped here; a new skill follows the anatomy in «What's inside each skill» above.
 
 ## License
 

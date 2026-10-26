@@ -54,19 +54,10 @@ change.
 - `references/{inputs,settings,command-detection,tdd-loop,team-exec,workflow-exec,decision-tree}.md`
   and `SKILL.md` updated.
 
-### Fixed — references to files that don't exist; PR-template attribution
+### Fixed
 
-- `plugin/README.md`: `implement-tasks` listed `references/{tdd-engine,commit-format,sdlc-local,…}.md`
-  — now the eight real files; `clarify-prd` → `ambiguity-checks.md`; `review-feature` no longer
-  lists a non-existent `templates/review-template.md`; `ship-feature` → `templates/changelog.md`;
-  the `CONTRIBUTING.md` link and `document-templates/` (upstream course repo only) are marked as not
-  shipped here.
-- `fix-term`: the link to `../../../document-templates/CONTEXT-MAP.md` is replaced by the table
-  shape the skill already writes.
-- `_shared/socratic-loop.md`: per-skill delta file is `references/socratic-loop.md`, not
-  `references/socratic.md`.
-- `ship-feature/templates/pr-body.md`: dropped the trailing «Generated with Claude Code» line, so
-  PR bodies carry no tool attribution.
+- File references in `plugin/README.md`, `fix-term` and `_shared/socratic-loop.md`.
+- `ship-feature/templates/pr-body.md` carries no tool attribution.
 - What to do after updating: nothing for existing projects. To make `generate-data-model` follow
   your migration conventions, write them into `.claude/rules/migrations.md`; for nested code repos,
   optionally add `repos:` to `.claude/sdlc.local.md`.
