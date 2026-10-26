@@ -4,7 +4,7 @@ All notable changes to the `sdlc/` toolkit and `sdlc` Claude Code plugin.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
-## [4.6.2-vet.1] — 2026-10-26
+## [0.0.1] — 2026-10-26
 
 Fork of [genkovich/sdlc](https://github.com/genkovich/sdlc) 4.6.2 (vetaloffline/sdlc). Plugin name,
 agent names (`sdlc:<agent>`) and every upstream default are unchanged; the changes below make the

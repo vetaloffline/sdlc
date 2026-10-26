@@ -11,7 +11,7 @@ design specs, ADRs, review checklists.
 ## Fork notes
 
 This is a fork of [genkovich/sdlc](https://github.com/genkovich/sdlc) 4.6.2 (version
-`4.6.2-vet.1`). The plugin name (`sdlc`), agent names and every default are unchanged; what differs:
+`0.0.1`). The plugin name (`sdlc`), agent names and every default are unchanged; what differs:
 
 - `generate-data-model` reads `.claude/rules/migrations.md` on every run and lets it override the
   DB defaults (migration format, PK, audit columns, CHECK/TRIGGER policy, delete strategy, seeds).
