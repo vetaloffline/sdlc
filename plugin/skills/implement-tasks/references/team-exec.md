@@ -13,7 +13,7 @@ Spawn each by its plugin-namespaced `subagent_type` — `sdlc:test-author`, `sdl
 ## Setup
 
 1. Create the team (`TeamCreate`). Seed a shared **TaskList** from `docs/features/<slug>/tasks/tasks.json` — **the full task text goes in each task body** (title, `acs` text pulled from PRD §5, `dod`, `files_hint`). Teammates do NOT read the plan or the conversation; the task body is their whole brief.
-2. Give each agent its own git **worktree** under `.worktrees/<agent>` (`isolation: worktree` is required for the team — the guard enforces it). No two agents share a tree.
+2. Give each agent its own git **worktree** under `.worktrees/<agent>` (`isolation: worktree` is required for the team — the guard enforces it). No two agents share a tree. In a nested-repo workspace the worktree is created in the task's **owning code repo** (`<repo>/.worktrees/<agent>`, one per agent per repo it works in), not in the docs repo — see [`./inputs.md`](./inputs.md) §Nested code repos.
 3. Set per-role **model + effort** from `model_*` / `effort_*` + the `.size` scaling, and export the env vars for the dispatch — all per [`../../_shared/agent-roster.md`](../../_shared/agent-roster.md) (roster defaults: test-author/implementer `sonnet`+`medium`, reviewer `opus`+`high`). Print the resolved per-role model+effort in the banner.
 
 ## Flow per task
@@ -32,7 +32,7 @@ Tasks in different lanes with satisfied deps run in parallel; tasks in the same 
 
 ## Commits
 
-The lead **serializes commits in dependency order** regardless of when the work finished — pull each agent's worktree changes for a `done` task and commit them on the feature branch with the `SDLC-Task`/`SDLC-AC` trailers ([`tdd-loop.md`](./tdd-loop.md)). The history is linear and bisectable even though the work was concurrent.
+The lead **serializes commits in dependency order** regardless of when the work finished — pull each agent's worktree changes for a `done` task and commit them on the feature branch with the `SDLC-Task`/`SDLC-AC` trailers ([`tdd-loop.md`](./tdd-loop.md)) — in a nested-repo workspace on each owning repo's feature branch (`git -C <repo>`, one commit per repo for a task that spans two), with the tracker update in the docs repo. The history is linear and bisectable even though the work was concurrent.
 
 ## Don't over-orchestrate
 

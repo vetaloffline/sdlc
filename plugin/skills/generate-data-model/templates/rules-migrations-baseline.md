@@ -1,7 +1,7 @@
 # Migration rules — baseline
 
 <!-- Bootstrapped by sdlc/plugin/skills/generate-data-model. Edit freely. -->
-<!-- These rules are an opinionated default — see "Defaults" in SKILL.md. -->
+<!-- These rules are an opinionated default — see "Defaults" in SKILL.md. generate-data-model reads this file on every run: a team edit here overrides the matching default (incl. the migration tool / file format, PK, audit columns, CHECK / TRIGGER policy, delete strategy, seeds / fixtures form), and the audit report records each deviation. -->
 
 ## Filenames
 

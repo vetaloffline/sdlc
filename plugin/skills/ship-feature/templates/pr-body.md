@@ -34,5 +34,3 @@
 
 - Migration: <run-on-deploy + rollback>, or none.
 - Feature flag / config: <any>, or none.
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)

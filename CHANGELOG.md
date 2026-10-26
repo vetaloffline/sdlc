@@ -4,6 +4,64 @@ All notable changes to the `sdlc/` toolkit and `sdlc` Claude Code plugin.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.1] — 2026-10-26
+
+Fork of [genkovich/sdlc](https://github.com/genkovich/sdlc) 4.6.2 (vetaloffline/sdlc). Plugin name,
+agent names (`sdlc:<agent>`) and every upstream default are unchanged; the changes below make the
+plugin honour project rules and nested code repos without hardcoding any stack.
+
+### Changed — `generate-data-model`: `.claude/rules/migrations.md` overrides the DB defaults
+
+The Defaults table said the skill «does NOT defer» to a repo's DB philosophy, and
+`.claude/rules/migrations.md` was only written when absent, never read. A project whose migrations
+are not raw SQL (framework migration classes, its own PK / audit / seeds conventions) got `.up.sql`
+pairs it could not use. The skill now uses the mechanism `api-forge` already has for
+`.claude/rules/openapi.md`.
+
+- **Read on every run.** Step 2 is «Rules: read or bootstrap»: absent → baseline bootstrapped and
+  reported (unchanged); present → read, and any rule in it overrides the matching Defaults row —
+  migration tool / file format, filenames, PK strategy, audit columns, `CHECK` / `TRIGGER` policy,
+  delete strategy, seeds / fixtures form. Rows it doesn't cover keep the course default. When the
+  live migrations tree sits in a nested code repo, that repo's rules file is read too and wins.
+- **Project format end to end.** Staged migrations under `docs/features/<slug>/migrations/`, the
+  `_drift/` proposals and the self-check (rollback reversibility, FK indexes, forbidden features)
+  work on the project's format; the audit report gains a **Rules file** line listing the overrides.
+  The architecture map is still a location hint only, never an override.
+- Defaults intro, protocol steps 2/3/4e/6/7/10/11/12/14/15, DoD, anti-patterns (new: «Ignoring an
+  existing `.claude/rules/migrations.md`»), the example (a «rules file present» variant), the baseline
+  template header and `plugin/README.md` «DB exception» updated.
+- `implement-tasks` promotion copies staged migrations in whatever format they were staged
+  (pair or single file), verbatim, re-stamping only the filename prefix.
+
+### Added — `implement-tasks`: nested code repos
+
+Workspaces that keep `docs/` in a root git repo and the code in independent git repos in
+sub-directories (own `.git`, gitignored by the root) are supported; a single-repo project sees no
+change.
+
+- **Owning repo per task** from `files_hint` (nearest ancestor with a `.git`, `docs/features/<slug>/`
+  hints excluded). Branch creation, command detection, tests, lint, vet and commits (with the usual
+  `SDLC-Task` / `SDLC-AC` trailers) run in that repo via `git -C <repo>`. A task touching two repos →
+  one commit per repo with the same trailers. `tasks/tracker.md` / `tasks.json` edits stay in the docs
+  repo and are never staged into a code-repo commit.
+- **Worktrees** (`isolation: worktree`) are created in the owning code repo
+  (`<repo>/.worktrees/<agent>`), ignored via that repo's `info/exclude`, not its `.gitignore`.
+- **New setting `repos`** in `.claude/sdlc.local.md` — per-repo `cmd_test_unit` /
+  `cmd_test_integration` / `cmd_lint` / `cmd_vet` overrides keyed by path
+  (`repos: { api: { cmd_test_unit: "..." }, app: { ... } }`); precedence
+  `repos.<path>.cmd_*` → top-level `cmd_*` → detection inside that repo. The banner and the
+  detected-commands block print one line / block per repo.
+- `references/{inputs,settings,command-detection,tdd-loop,team-exec,workflow-exec,decision-tree}.md`
+  and `SKILL.md` updated.
+
+### Fixed
+
+- File references in `plugin/README.md`, `fix-term` and `_shared/socratic-loop.md`.
+- `ship-feature/templates/pr-body.md` carries no tool attribution.
+- What to do after updating: nothing for existing projects. To make `generate-data-model` follow
+  your migration conventions, write them into `.claude/rules/migrations.md`; for nested code repos,
+  optionally add `repos:` to `.claude/sdlc.local.md`.
+
 ## [4.6.2] — 2026-10-25
 
 ### Fixed — `complete-sequence-diagrams`: the US/AC → flow coverage table has one home, `sad.md §6`

@@ -35,6 +35,8 @@ cmd_test_unit: ""          # empty = autodetect (escape hatch)
 cmd_test_integration: ""
 cmd_lint: ""
 cmd_vet: ""
+repos: {}                  # nested code repos only — per-repo cmd_* overrides keyed by path from the workspace root, e.g.
+                           # repos: { api: { cmd_test_unit: "make test", cmd_lint: "make lint" }, app: { cmd_test_unit: "npm test" } }
 model_test_author: sonnet     # per-role model (see _shared/agent-roster.md); inherit = session model
 model_implementer: sonnet
 model_reviewer: opus
@@ -49,7 +51,7 @@ effort_reviewer: high
 - **`tdd`** — when false, RED is skipped and the engine writes code directly (warns; you lose the safety net).
 - **`team_mode` / `workflow_mode`** — feed the decision tree (see [`decision-tree.md`](./decision-tree.md)). `team_mode` wins when both could apply.
 - **`max_parallel_agents`** — fan-out cap for team/workflow modes. `1` forces sequential.
-- **`isolation`** — `worktree` gives each parallel agent its own git worktree under `.worktrees/`; `inplace` edits the checkout directly and **forces parallelism to 1**.
+- **`isolation`** — `worktree` gives each parallel agent its own git worktree under `.worktrees/` (in a nested-repo workspace, under the owning code repo's `.worktrees/`); `inplace` edits the checkout directly and **forces parallelism to 1**.
 - **`stop_on_red`** — `true`: a red that survives escalation halts the run. `false`: drop that task, auto-block its dependents, continue other branches.
 - **`max_red_retries`** — RED→GREEN attempts before escalation (see [`escalation.md`](./escalation.md)).
 - **`gate_lint` / `gate_vet`** — include lint / vet in the per-task gate (skipped gracefully if no command is detected — see [`command-detection.md`](./command-detection.md)).
@@ -57,6 +59,7 @@ effort_reviewer: high
 - **`auto_commit`** — `per_task` (default), `per_phase`, or `off` (leave commits to the user).
 - **`branch_strategy`** — `feature`: ensure work is on a feature branch (create one if on the default branch); `current`: commit on the current branch.
 - **`cmd_*`** — explicit command overrides; non-empty values short-circuit detection (the escape hatch for unusual repos).
+- **`repos`** — only for a workspace whose code lives in nested, independent git repos (sub-directories with their own `.git`, usually gitignored by the docs repo). Key = the repo's path relative to the workspace root (`api`, `app`, `services/billing`); value = any of `cmd_test_unit` / `cmd_test_integration` / `cmd_lint` / `cmd_vet` for that repo. Precedence for a task's command: `repos.<path>.cmd_*` → top-level `cmd_*` (applies to every repo, so leave it empty in a multi-repo workspace) → detection inside that repo. Nested repos are found from `files_hint` without this key ([`inputs.md`](./inputs.md) §Nested code repos); `repos` only overrides their commands. Empty or absent → no change for a single-repo project. A path that isn't a git repo → warn and ignore that entry.
 - **`model_*` / `effort_*`** — per-role model + effort for the three agents, applied when the engine spawns them (it overrides the agent's frontmatter default). Roster defaults + rationale → [`../../_shared/agent-roster.md`](../../_shared/agent-roster.md). Precedence: env var > this setting > agent frontmatter > session.
   - **Env path:** the engine also exports `CLAUDE_CODE_EFFORT_LEVEL` / `CLAUDE_CODE_SUBAGENT_MODEL` for the dispatch when these keys are set — the reliable lever (see [`agent-roster.md`](../../_shared/agent-roster.md) for why frontmatter alone may not suffice).
   - **`.size` scaling:** the engine raises the default effort for **L/XL** features (execution agents → `high`) before dispatch, and keeps the cheap defaults for **XS/S** — a cross-module change is where reasoning depth pays off. It prints the resolved per-role model+effort in the banner.

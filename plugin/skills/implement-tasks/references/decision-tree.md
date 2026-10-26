@@ -66,4 +66,6 @@ SDLC implement-tasks — feature: notification-preferences
   tasks         = 6   phases = 4   longest_chain = 4
 ```
 
+In a nested-repo workspace, add one `repo <path>` line per owning repo (its branch + resolved commands).
+
 The banner is mandatory — the user must see the mode and the settings that drove it before any code is written.
